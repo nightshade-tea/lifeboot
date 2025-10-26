@@ -10,7 +10,7 @@
 #define DEAD ' '
 #define ALIVE '#'
 
-#define INIT_RATIO 10
+#define INIT_RATIO 4
 
 #define STR(x) _STR(x)
 #define _STR(x) #x
