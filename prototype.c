@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
 #include <time.h>
 
 #define COLS 80
@@ -27,12 +29,58 @@ static void print_grid(char grid[COLS * ROWS]) {
 }
 
 static void init_grid(char grid[COLS * ROWS]) {
-  for (int i = 0; i < ROWS * COLS; i++) {
+  for (int i = 0; i < COLS * ROWS; i++) {
     if (rand() % INIT_RATIO)
       grid[i] = DEAD;
     else
       grid[i] = ALIVE;
   }
+}
+
+static char get_state(char grid[COLS * ROWS], int idx) {
+  if (idx < 0 || idx >= COLS * ROWS)
+    return DEAD;
+
+  return grid[idx];
+}
+
+static int alive_neighbours(char grid[COLS * ROWS], int idx) {
+  int neighbours = 0;
+
+  for (int i = -1; i <= 1; i++) /* row */
+    for (int j = -1; j <= 1; j++) /* col */
+      if (get_state(grid, idx + i * COLS + j) == ALIVE)
+        neighbours++;
+
+  if (get_state(grid, idx) == ALIVE)
+    neighbours--;
+
+  return neighbours;
+}
+
+static char next_state(char grid[COLS * ROWS], int idx) {
+  int n = alive_neighbours(grid, idx);
+
+  if (get_state(grid, idx) == ALIVE) {
+    if (n < 2 || n > 3)
+      return DEAD;
+
+    return ALIVE;
+  }
+
+  if (n == 3)
+    return ALIVE;
+
+  return DEAD;
+}
+
+static void update_grid(char grid[COLS * ROWS]) {
+  char new[COLS * ROWS];
+
+  for (int i = 0; i < COLS * ROWS; i++)
+    new[i] = next_state(grid, i);
+
+  memcpy(grid, new, COLS * ROWS);
 }
 
 int main () {
@@ -41,8 +89,12 @@ int main () {
   srand(time(0));
   init_grid(grid);
 
-  clearscr();
-  print_grid(grid);
+  for (;;) {
+    clearscr();
+    print_grid(grid);
+    update_grid(grid);
+    getchar();
+  }
 
   return 0;
 }
