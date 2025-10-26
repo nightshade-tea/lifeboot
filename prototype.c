@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 #define COLS 80
 #define ROWS 25
@@ -15,13 +15,9 @@
 #define STR(x) _STR(x)
 #define _STR(x) #x
 
-static void clearscr() {
-  printf("\e[1;1H\e[2J");
-}
+static void clearscr() { printf("\e[1;1H\e[2J"); }
 
-static void print_row(char row[COLS]) {
-  printf("%." STR(COLS) "s\n", row);
-}
+static void print_row(char row[COLS]) { printf("%." STR(COLS) "s\n", row); }
 
 static void print_grid(char grid[COLS * ROWS]) {
   for (int i = 0; i < ROWS; i++)
@@ -85,7 +81,7 @@ static void update_grid(char grid[COLS * ROWS]) {
   memcpy(grid, new, COLS * ROWS);
 }
 
-int main () {
+int main() {
   char grid[COLS * ROWS];
 
   srand(time(0));
