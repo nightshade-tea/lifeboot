@@ -91,12 +91,11 @@ int main () {
   srand(time(0));
   init_grid(grid);
 
-  for (;;) {
+  do {
     clearscr();
     print_grid(grid);
     update_grid(grid);
-    getchar();
-  }
+  } while (getchar() != 'q');
 
   return 0;
 }
