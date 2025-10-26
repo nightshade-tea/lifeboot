@@ -37,22 +37,24 @@ static void init_grid(char grid[COLS * ROWS]) {
   }
 }
 
-static char get_state(char grid[COLS * ROWS], int idx) {
-  if (idx < 0 || idx >= COLS * ROWS)
+static char get_state(char grid[COLS * ROWS], int row, int col) {
+  if (row < 0 || row >= ROWS || col < 0 || col >= COLS)
     return DEAD;
 
-  return grid[idx];
+  return grid[row * COLS + col];
 }
 
 static int alive_neighbours(char grid[COLS * ROWS], int idx) {
+  int row = idx / COLS;
+  int col = idx % COLS;
   int neighbours = 0;
 
-  for (int i = -1; i <= 1; i++) /* row */
-    for (int j = -1; j <= 1; j++) /* col */
-      if (get_state(grid, idx + i * COLS + j) == ALIVE)
+  for (int i = -1; i <= 1; i++)
+    for (int j = -1; j <= 1; j++)
+      if (get_state(grid, row + i, col + j) == ALIVE)
         neighbours++;
 
-  if (get_state(grid, idx) == ALIVE)
+  if (get_state(grid, row, col) == ALIVE)
     neighbours--;
 
   return neighbours;
@@ -61,7 +63,7 @@ static int alive_neighbours(char grid[COLS * ROWS], int idx) {
 static char next_state(char grid[COLS * ROWS], int idx) {
   int n = alive_neighbours(grid, idx);
 
-  if (get_state(grid, idx) == ALIVE) {
+  if (get_state(grid, idx / COLS, idx % COLS) == ALIVE) {
     if (n < 2 || n > 3)
       return DEAD;
 
