@@ -1,9 +1,15 @@
 SRC_DIR := .
-PROGRAMS := prototype
+PROGRAMS := prototype lifeboot
 CC := gcc
 CFLAGS := -Wall -Wextra -Werror -I.
 
 build: $(PROGRAMS)
+
+lifeboot:
+	nasm lifeboot.asm
+
+run:
+	qemu-system-x86_64 -drive file=lifeboot,format=raw
 
 format:
 	find $(SRC_DIR) -iname '*.[hc]' | xargs clang-format -i --style=GNU
@@ -11,4 +17,4 @@ format:
 clean:
 	rm -rf $(PROGRAMS) *.o
 
-.PHONY: build format clean
+.PHONY: build run format clean
