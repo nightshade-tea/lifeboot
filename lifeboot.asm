@@ -8,8 +8,7 @@ org 0x7c00
 %define VGA_ROW 25
 %define VGA_LENW VGA_COL * VGA_ROW
 
-%define FILL_CHAR 0xfa              ; middle dot
-%define FILL_COLOR 0x04             ; red on black
+%define FILL_CHAR ' '
 %define PRINT_COLOR 0x07            ; grey on black
 
 ; entry point -----------------------------------------------------------------
@@ -36,7 +35,7 @@ mov cx, VGA_LENW
 mov ax, VGA_SEG
 mov es, ax
 xor di, di
-mov ax, (FILL_COLOR << 8) | FILL_CHAR
+mov ax, (PRINT_COLOR << 8) | FILL_CHAR
 
 rep stosw                   ; fill cx words at es:di with ax
 
