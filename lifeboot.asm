@@ -1,14 +1,18 @@
 bits 16
 org 0x7c00
 
-%define ORG 0x7c00                  ; where we are loaded initially
+%define ORG 0x7c00
+%define VGA 0xb8000
 
-%define VGA_SEG 0xb800              ; video memory starts at 0xb8000
-%define VGA_COL 80
-%define VGA_ROW 25
-%define VGA_LENW VGA_COL * VGA_ROW
+%define COLS 80
+%define ROWS 25
 
-%define FILL_CHAR ' '
+%define GRID ORG + 512
+%define NEXT_GRID GRID_CUR + COLS * ROWS
+
+%define DEAD ' '
+%define ALIVE '#'
+
 %define PRINT_COLOR 0x07            ; grey on black
 
 ; entry point -----------------------------------------------------------------
@@ -31,11 +35,11 @@ mov ah, 0x01
 int 0x10
 
 ; clear video memory
-mov cx, VGA_LENW
-mov ax, VGA_SEG
+mov cx, COLS * ROWS
+mov ax, VGA >> 4
 mov es, ax
 xor di, di
-mov ax, (PRINT_COLOR << 8) | FILL_CHAR
+mov ax, (PRINT_COLOR << 8) | DEAD
 
 rep stosw                   ; fill cx words at es:di with ax
 
