@@ -9,7 +9,6 @@ org 0x7c00
 
 %define DEAD ' '            ; char to represent a dead cell
 %define ALIVE '#'           ; char to represent an alive cell
-%define INIT_RATIO 4        ; dead / alive
 %define PRINT_COLOR 0x07    ; grey on black
 
 %define GRID        ORG + 512               ; current cell grid (80 * 25 bytes)
@@ -53,12 +52,34 @@ mov ah, 0x00                ; get
 int 0x1a                    ;  system time
 mov [XSS], dx               ; cx:dx = number of clock ticks since midnight
 
+; initialize grid
+mov di, GRID
+mov cx, COLS * ROWS
+
+.initgrid:                  ; do {
+    call xs                 ;     ax = rand
+    mov dl, DEAD            ;     dl = DEAD (likely)
+
+    test ax, 0b11
+
+    jnz  .initgrid_nz       ;     if (ax % 4 == 0)
+    mov dl, ALIVE           ;         dl = ALIVE
+
+.initgrid_nz:
+    mov [di + cx], dl       ;     grid[cx] = dl
+
+    loop .initgrid          ; } while (--cx)
+
+jmp halt
+
 ; functions -------------------------------------------------------------------
 
 ; xs() - xorshift pseudorandom number generator -------------------------------
 
 ; output:
 ; ax        = updated state ([XSS])
+
+; clobbers ax, dx
 
 xs:
 
