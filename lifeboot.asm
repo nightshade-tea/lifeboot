@@ -27,6 +27,9 @@ mov ss, ax
 mov sp, ORG
 mov bp, ORG
 
+; clear direction flag
+cld
+
 ; clear screen ----------------------------------------------------------------
 
 ; disable cursor
@@ -53,20 +56,22 @@ int 0x1a                    ;  system time
 mov [XSS], dx               ; cx:dx = number of clock ticks since midnight
 
 ; initialize grid
-mov di, GRID
-mov cx, COLS * ROWS
+mov cx, COLS * ROWS         ; for each cell
+xor ax, ax
+mov es, ax
+mov di, GRID                ; es:di -> GRID
 
 .initgrid:                  ; do {
-    call xs                 ;     ax = rand
-    mov dl, DEAD            ;     dl = DEAD (likely)
+    call xs                 ;     [XSS] = rand
+    mov al, DEAD            ;     al = DEAD (likely)
 
-    test ax, 0b11
+    test [XSS], 0b11
 
-    jnz  .initgrid_nz       ;     if (ax % 4 == 0)
-    mov dl, ALIVE           ;         dl = ALIVE
+    jnz  .initgrid_nz       ;     if ([XSS] % 4 == 0)
+    mov al, ALIVE           ;         al = ALIVE
 
 .initgrid_nz:
-    mov [di + cx], dl       ;     grid[cx] = dl
+    stosb                   ;     [es:(di++)] = al
 
     loop .initgrid          ; } while (--cx)
 
@@ -77,26 +82,26 @@ jmp halt
 ; xs() - xorshift pseudorandom number generator -------------------------------
 
 ; output:
-; ax        = updated state ([XSS])
+; [XSS]     = updated state
 
-; clobbers ax, dx
+; clobbers bx, dx
 
 xs:
 
-mov ax, [XSS]
-mov dx, ax
+mov bx, [XSS]
+mov dx, bx
 
 shl dx, 1                   ; dx = xss << 1
-xor ax, dx                  ; ax = xss ^ (xss << 1)
-mov dx, ax
+xor bx, dx                  ; bx = xss ^ (xss << 1)
+mov dx, bx
 
 shr dx, 3                   ; dx = xss' >> 3
-xor ax, dx                  ; ax = xss' ^ (xss' >> 3)
-mov dx, ax
+xor bx, dx                  ; bx = xss' ^ (xss' >> 3)
+mov dx, bx
 
 shl dx, 10                  ; dx = xss'' << 10
-xor ax, dx                  ; ax = xss'' ^ (xss'' << 10)
-mov [XSS], ax
+xor bx, dx                  ; bx = xss'' ^ (xss'' << 10)
+mov [XSS], bx
 
 ret
 
