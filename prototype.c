@@ -1,8 +1,7 @@
+#include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <unistd.h>
 
 #define COLS 80
 #define ROWS 25
@@ -14,6 +13,18 @@
 
 #define STR(x) _STR (x)
 #define _STR(x) #x
+
+static uint16_t xss; /* xs() state */
+
+static uint16_t
+xs () /* xorshift prng */
+{
+  xss ^= (xss << 1);
+  xss ^= (xss >> 3);
+  xss ^= (xss << 10);
+
+  return xss;
+}
 
 static void
 clearscr ()
@@ -39,7 +50,7 @@ init_grid (char grid[COLS * ROWS])
 {
   for (int i = 0; i < COLS * ROWS; i++)
     {
-      if (rand () % INIT_RATIO)
+      if (xs () % INIT_RATIO)
         grid[i] = DEAD;
       else
         grid[i] = ALIVE;
@@ -108,7 +119,7 @@ main ()
 {
   char grid[COLS * ROWS];
 
-  srand (time (0));
+  xss = time (0);
   init_grid (grid);
 
   do
