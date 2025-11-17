@@ -7,13 +7,14 @@ org 0x7c00
 %define COLS 80
 %define ROWS 25
 
-%define GRID ORG + 512
-%define NEXT_GRID GRID_CUR + COLS * ROWS
+%define DEAD ' '            ; char to represent a dead cell
+%define ALIVE '#'           ; char to represent an alive cell
+%define INIT_RATIO 4        ; dead / alive
+%define PRINT_COLOR 0x07    ; grey on black
 
-%define DEAD ' '
-%define ALIVE '#'
-
-%define PRINT_COLOR 0x07            ; grey on black
+%define GRID        ORG + 512               ; current cell grid (80 * 25 bytes)
+%define NEXT_GRID   GRID + COLS * ROWS      ; next cell grid (80 * 25 bytes)
+%define XSS         NEXT_GRID + COLS * ROWS ; xs() state
 
 ; entry point -----------------------------------------------------------------
 
@@ -42,6 +43,41 @@ xor di, di
 mov ax, (PRINT_COLOR << 8) | DEAD
 
 rep stosw                   ; fill cx words at es:di with ax
+
+; setup -----------------------------------------------------------------------
+
+setup:
+
+; initialize xss
+mov ah, 0x00                ; get
+int 0x1a                    ;  system time
+mov [XSS], dx               ; cx:dx = number of clock ticks since midnight
+
+; functions -------------------------------------------------------------------
+
+; xs() - xorshift pseudorandom number generator -------------------------------
+
+; output:
+; ax        = updated state ([XSS])
+
+xs:
+
+mov ax, [XSS]
+mov dx, ax
+
+shl dx, 1                   ; dx = xss << 1
+xor ax, dx                  ; ax = xss ^ (xss << 1)
+mov dx, ax
+
+shr dx, 3                   ; dx = xss' >> 3
+xor ax, dx                  ; ax = xss' ^ (xss' >> 3)
+mov dx, ax
+
+shl dx, 10                  ; dx = xss'' << 10
+xor ax, dx                  ; ax = xss'' ^ (xss'' << 10)
+mov [XSS], ax
+
+ret
 
 ; errors ----------------------------------------------------------------------
 
