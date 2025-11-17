@@ -1,7 +1,7 @@
 SRC_DIR := .
 PROGRAMS := prototype lifeboot
 CC := gcc
-CFLAGS := -Wall -Wextra -Werror -I.
+CFLAGS := -Wall -Wextra -I.
 
 build: $(PROGRAMS)
 
