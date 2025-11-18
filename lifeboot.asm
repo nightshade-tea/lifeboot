@@ -30,21 +30,10 @@ mov bp, ORG
 ; clear direction flag
 cld
 
-; clear screen ----------------------------------------------------------------
-
 ; disable cursor
 mov ch, 0x3f
 mov ah, 0x01
 int 0x10
-
-; clear video memory
-mov cx, COLS * ROWS
-mov ax, VGA >> 4
-mov es, ax
-xor di, di
-mov ax, (PRINT_COLOR << 8) | DEAD
-
-rep stosw                   ; fill cx words at es:di with ax
 
 ; setup -----------------------------------------------------------------------
 
@@ -56,10 +45,8 @@ int 0x1a                    ;  system time
 mov [XSS], dx               ; cx:dx = number of clock ticks since midnight
 
 ; initialize grid
-mov cx, COLS * ROWS         ; for each cell
-xor ax, ax
-mov es, ax
 mov di, GRID                ; es:di -> GRID
+mov cx, COLS * ROWS         ; for each cell
 
 .initgrid:                  ; do {
     call xs                 ;     [XSS] = rand
@@ -74,6 +61,8 @@ mov di, GRID                ; es:di -> GRID
     stosb                   ;     [es:(di++)] = al
 
     loop .initgrid          ; } while (--cx)
+
+call print_grid
 
 jmp halt
 
@@ -105,39 +94,45 @@ mov [XSS], bx
 
 ret
 
-; errors ----------------------------------------------------------------------
+; print_grid() - print GRID cells to screen -----------------------------------
 
-hello:
-mov si, str.hello
+; (*) this function expects ds = 0 when called and sets es = 0 before
+;     returning. this is simpler because in the rest of the program we want the
+;     segment registers to be zeroed anyway.
 
-; print the error message string in si and halt
-; note: we assume es = VGA_SEG and ds = 0
-printerr:
+; clobbers ax, cx, di, si
+
+print_grid:
+
+mov ax, VGA >> 4
 xor di, di
-mov ah, PRINT_COLOR
 
-; es:di = video memory
-; ds:si = error message
-; al = current char
-; ah = color attribute
+mov es, ax                  ; es:di -> VGA
+mov si, GRID                ; ds:si -> GRID
 
-write_char:
-lodsb                   ; al = [ds:si], si += 1
-or  al, al              ; on null terminator,
-jz  halt                ;  halt
-stosw                   ; [es:di] = ax, di += 2
-jmp write_char
+mov ah, PRINT_COLOR         ; ah = color attribute
+
+mov cx, COLS * ROWS         ; for each cell
+
+.print_cell:                ; do {
+
+    lodsb                   ;     al = [ds:(si++)]
+    stosw                   ;     [es:di] = ax ; di += 2
+
+    loop .print_cell        ; } while (--cx)
+
+mov es, cx                  ; es = 0
+ret
+
+; halt() - stop program execution ---------------------------------------------
 
 halt:
-cli                     ; disable interrupts
+
+cli                         ; disable interrupts
 hlt
 jmp halt
 
-; data ------------------------------------------------------------------------
-
-str:
-.hello:
-    db "lifeboot", 0
+; -----------------------------------------------------------------------------
 
 times 510 - ($ - $$) db 0   ; fill remaining bytes with zeroes
 dw 0xaa55                   ; mbr magic byte
