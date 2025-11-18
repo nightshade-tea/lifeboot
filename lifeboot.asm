@@ -35,33 +35,16 @@ mov ch, 0x3f
 mov ah, 0x01
 int 0x10
 
-; setup -----------------------------------------------------------------------
-
-setup:
-
 ; initialize xss
 mov ah, 0x00                ; get
 int 0x1a                    ;  system time
 mov [XSS], dx               ; cx:dx = number of clock ticks since midnight
 
-; initialize grid
-mov di, GRID                ; es:di -> GRID
-mov cx, COLS * ROWS         ; for each cell
+; setup -----------------------------------------------------------------------
 
-.initgrid:                  ; do {
-    call xs                 ;     [XSS] = rand
-    mov al, DEAD            ;     al = DEAD (likely)
+setup:
 
-    test [XSS], 0b11
-
-    jnz  .initgrid_nz       ;     if ([XSS] % 4 == 0)
-    mov al, ALIVE           ;         al = ALIVE
-
-.initgrid_nz:
-    stosb                   ;     [es:(di++)] = al
-
-    loop .initgrid          ; } while (--cx)
-
+call init_grid
 call print_grid
 
 jmp halt
@@ -91,6 +74,33 @@ mov dx, bx
 shl dx, 10                  ; dx = xss'' << 10
 xor bx, dx                  ; bx = xss'' ^ (xss'' << 10)
 mov [XSS], bx
+
+ret
+
+; init_grid() - initialize GRID cells with random values ----------------------
+
+; (*) expects es = 0.
+
+; clobbers ax, bx, cx, dx, di
+
+init_grid:
+
+mov di, GRID                ; es:di -> GRID
+mov cx, COLS * ROWS         ; for each cell
+
+.write_cell:                ; do {
+    call xs                 ;     [XSS] = rand
+    mov al, DEAD            ;     al = DEAD (likely)
+
+    test [XSS], 0b11
+
+    jnz  .nz                ;     if ([XSS] % 4 == 0)
+    mov al, ALIVE           ;         al = ALIVE
+
+.nz:
+    stosb                   ;     [es:(di++)] = al
+
+    loop .write_cell        ; } while (--cx)
 
 ret
 
