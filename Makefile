@@ -3,12 +3,12 @@ PROGRAMS := prototype lifeboot
 CC := gcc
 CFLAGS := -Wall -Wextra -I.
 
-build: $(PROGRAMS)
-
-lifeboot:
+lifeboot: lifeboot.asm
 	nasm lifeboot.asm
 
-run:
+all: $(PROGRAMS)
+
+run: lifeboot
 	qemu-system-x86_64 -drive file=lifeboot,format=raw
 
 format:
@@ -17,4 +17,4 @@ format:
 clean:
 	rm -rf $(PROGRAMS) *.o
 
-.PHONY: build run format clean
+.PHONY: all run format clean
