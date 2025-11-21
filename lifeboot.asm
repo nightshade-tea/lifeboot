@@ -92,7 +92,7 @@ mov cx, COLS * ROWS         ; for each cell
     call xs                 ;     [XSS] = rand
     mov al, DEAD            ;     al = DEAD (likely)
 
-    test [XSS], 0b11
+    test word [XSS], 0b11
 
     jnz  .nz                ;     if ([XSS] % 4 == 0)
     mov al, ALIVE           ;         al = ALIVE
