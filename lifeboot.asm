@@ -10,6 +10,7 @@ org 0x7c00
 %define DEAD ' '            ; char to represent a dead cell
 %define ALIVE '#'           ; char to represent an alive cell
 %define PRINT_COLOR 0x07    ; grey on black
+%define WAIT_DELAY 0x02     ; 0.131072 seconds
 
 %define GRID        ORG + 512               ; current cell grid (80 * 25 bytes)
 %define NEXT_GRID   GRID + COLS * ROWS      ; next cell grid (80 * 25 bytes)
@@ -18,14 +19,13 @@ org 0x7c00
 ; entry point -----------------------------------------------------------------
 
 ; initialize segment registers
-xor ax, ax
-mov ds, ax
-mov es, ax
-mov ss, ax
+lds ax, [farptr.zero]
+les ax, [farptr.zero]
+lss ax, [farptr.zero]
 
 ; set stack pointers
-mov sp, ORG
 mov bp, ORG
+mov sp, bp
 
 ; clear direction flag
 cld
@@ -46,10 +46,25 @@ setup:
 
 call init_grid
 call print_grid
+call delay
 
-jmp halt
+jmp setup
 
 ; functions -------------------------------------------------------------------
+
+; delay() - suspend program execution temporarily -----------------------------
+
+; clobbers ah, cx, dx
+
+delay:
+
+mov cx, WAIT_DELAY          ; cx:dx = interval in microseconds
+mov dx, 0
+
+mov ah, 0x86
+int 0x15                    ; wait
+
+ret
 
 ; xs() - xorshift pseudorandom number generator -------------------------------
 
@@ -81,7 +96,7 @@ ret
 
 ; (*) expects es = 0.
 
-; clobbers ax, bx, cx, dx, di
+; clobbers al, bx, cx, dx, di
 
 init_grid:
 
@@ -114,10 +129,7 @@ ret
 
 print_grid:
 
-mov ax, VGA >> 4
-xor di, di
-
-mov es, ax                  ; es:di -> VGA
+les di, [farptr.vga_start]  ; es:di -> VGA
 mov si, GRID                ; ds:si -> GRID
 
 mov ah, PRINT_COLOR         ; ah = color attribute
@@ -142,7 +154,14 @@ cli                         ; disable interrupts
 hlt
 jmp halt
 
-; -----------------------------------------------------------------------------
+; data ------------------------------------------------------------------------
+
+farptr:                     ; offset, segment
+.zero:
+    dw 0                    ; take advantage of next dw 0
+
+.vga_start:
+    dw 0, VGA >> 4
 
 times 510 - ($ - $$) db 0   ; fill remaining bytes with zeroes
 dw 0xaa55                   ; mbr magic byte
