@@ -1,27 +1,43 @@
 bits 16
 org 0x7c00
 
-%define ORG 0x7c00
-%define VGA 0xb8000
+; =============================================================================
 
-%define COLS 80
-%define ROWS 25
+; settings --------------------------------------------------------------------
 
 %define DEAD ' '            ; char to represent a dead cell
 %define ALIVE '#'           ; char to represent an alive cell
 %define PRINT_COLOR 0x07    ; grey on black
 %define WAIT_DELAY 0x02     ; 0.131072 seconds
 
-%define GRID        ORG + 512               ; current cell grid (80 * 25 bytes)
-%define NEXT_GRID   GRID + COLS * ROWS      ; next cell grid (80 * 25 bytes)
-%define XSS         NEXT_GRID + COLS * ROWS ; xs() state
+; constants -------------------------------------------------------------------
+
+%define COLS 80
+%define ROWS 25
+%define VGAPGSZ (COLS * ROWS * 2)
+
+; memory layout ---------------------------------------------------------------
+
+%define ORG 0x7c00
+%define VGA 0xb8000
+%define DAT ORG + 512
+
+; static variables ------------------------------------------------------------
+
+%define xss DAT             ; xs() state (word)
+%define currvgapg xss + 2   ; current vga page near pointer (word)
+
+; =============================================================================
 
 ; entry point -----------------------------------------------------------------
 
 ; initialize segment registers
-lds ax, [farptr.zero]
-les ax, [farptr.zero]
-lss ax, [farptr.zero]
+mov ax, VGA >> 4
+mov ds, ax
+mov es, ax
+
+xor ax, ax
+mov ss, ax
 
 ; set stack pointers
 mov bp, ORG
@@ -31,24 +47,29 @@ mov sp, bp
 cld
 
 ; disable cursor
-mov ch, 0x3f
-mov ah, 0x01
-int 0x10
+mov ch, 0x3f                ; cursor start and options
+mov ah, 0x01                ; set text-mode cursor shape
+int 0x10                    ; video services
 
 ; initialize xss
 mov ah, 0x00                ; get
 int 0x1a                    ;  system time
-mov [XSS], dx               ; cx:dx = number of clock ticks since midnight
+mov [xss], dx               ; cx:dx = number of clock ticks since midnight
+
+; initialize currvgapg
+mov word [currvgapg], VGAPGSZ
 
 ; setup -----------------------------------------------------------------------
 
 setup:
 
 call init_grid
-call print_grid
+call flip_vga_page
 call delay
 
 jmp setup
+
+; =============================================================================
 
 ; functions -------------------------------------------------------------------
 
@@ -66,16 +87,36 @@ int 0x15                    ; wait
 
 ret
 
+; vsync() - wait for display to enter the next VBlank cycle -------------------
+
+; clobbers ax, dx
+
+vsync:
+
+mov dx, 0x3da               ; input status #1 register
+
+.wait_on:
+    in al, dx
+    test al, 0x08           ; vertical retrace bit
+    jnz .wait_on
+
+.wait_off:
+    in al, dx
+    test al, 0x08
+    jz .wait_off
+
+ret
+
 ; xs() - xorshift pseudorandom number generator -------------------------------
 
 ; output:
-; [XSS]     = updated state
+; [xss]     = updated state
 
 ; clobbers bx, dx
 
 xs:
 
-mov bx, [XSS]
+mov bx, [xss]
 mov dx, bx
 
 shl dx, 1                   ; dx = xss << 1
@@ -88,62 +129,50 @@ mov dx, bx
 
 shl dx, 10                  ; dx = xss'' << 10
 xor bx, dx                  ; bx = xss'' ^ (xss'' << 10)
-mov [XSS], bx
+mov [xss], bx
 
 ret
 
-; init_grid() - initialize GRID cells with random values ----------------------
+; init_grid() - initialize grid cells randomly --------------------------------
 
-; (*) expects es = 0.
-
-; clobbers al, bx, cx, dx, di
+; clobbers ax, bx, cx, dx, di
 
 init_grid:
 
-mov di, GRID                ; es:di -> GRID
+mov ah, PRINT_COLOR         ; ah = color attribute
+mov di, [currvgapg]         ; es:di -> grid start
 mov cx, COLS * ROWS         ; for each cell
 
 .write_cell:                ; do {
-    call xs                 ;     [XSS] = rand
+    call xs                 ;     [xss] = rand
     mov al, DEAD            ;     al = DEAD (likely)
 
-    test word [XSS], 0b11
+    test word [xss], 0b11
 
-    jnz  .nz                ;     if ([XSS] % 4 == 0)
+    jnz  .nz                ;     if ([xss] % 4 == 0)
     mov al, ALIVE           ;         al = ALIVE
 
 .nz:
-    stosb                   ;     [es:(di++)] = al
+    stosw                   ;     [es:di] = ax ; di += 2
 
     loop .write_cell        ; } while (--cx)
 
 ret
 
-; print_grid() - print GRID cells to screen -----------------------------------
+; flip_vga_page() - flip active display page ----------------------------------
 
-; (*) this function expects ds = 0 when called and sets es = 0 before
-;     returning. this is simpler because in the rest of the program we want the
-;     segment registers to be zeroed anyway.
+; clobbers ax, dx
 
-; clobbers ax, cx, di, si
+flip_vga_page:
 
-print_grid:
+call vsync
 
-les di, [farptr.vga_start]  ; es:di -> VGA
-mov si, GRID                ; ds:si -> GRID
+xor word [currvgapg], VGAPGSZ   ; flip currvgapg
+setnz al                        ; al = !(currvgapg == 0)
 
-mov ah, PRINT_COLOR         ; ah = color attribute
+mov ah, 0x05                ; select active display page
+int 0x10                    ; video services
 
-mov cx, COLS * ROWS         ; for each cell
-
-.print_cell:                ; do {
-
-    lodsb                   ;     al = [ds:(si++)]
-    stosw                   ;     [es:di] = ax ; di += 2
-
-    loop .print_cell        ; } while (--cx)
-
-mov es, cx                  ; es = 0
 ret
 
 ; halt() - stop program execution ---------------------------------------------
@@ -154,14 +183,7 @@ cli                         ; disable interrupts
 hlt
 jmp halt
 
-; data ------------------------------------------------------------------------
-
-farptr:                     ; offset, segment
-.zero:
-    dw 0                    ; take advantage of next dw 0
-
-.vga_start:
-    dw 0, VGA >> 4
+; =============================================================================
 
 times 510 - ($ - $$) db 0   ; fill remaining bytes with zeroes
 dw 0xaa55                   ; mbr magic byte
