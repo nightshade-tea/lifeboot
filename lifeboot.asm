@@ -25,7 +25,7 @@ org 0x7c00
 ; static variables ------------------------------------------------------------
 
 %define xss DAT             ; xs() state (word)
-%define currvgapg xss + 2   ; current vga page near pointer (word)
+%define currvgapg DAT + 2   ; current vga page near pointer (word)
 
 ; =============================================================================
 
@@ -87,11 +87,11 @@ int 0x15                    ; wait
 
 ret
 
-; vsync() - wait for display to enter the next VBlank cycle -------------------
+; vsync_wait() - wait for display to enter the next VBlank cycle --------------
 
 ; clobbers ax, dx
 
-vsync:
+vsync_wait:
 
 mov dx, 0x3da               ; input status #1 register
 
@@ -165,7 +165,7 @@ ret
 
 flip_vga_page:
 
-call vsync
+call vsync_wait
 
 xor word [currvgapg], VGAPGSZ   ; flip currvgapg
 setnz al                        ; al = !(currvgapg == 0)
