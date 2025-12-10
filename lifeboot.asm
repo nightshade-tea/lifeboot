@@ -194,9 +194,40 @@ ret
 ; clobbers ?
 
 alive_neighbours:
+enter 5, 0
 
-; todo
+; [bp - 1]: row
+; [bp - 2]: col
+; [bp - 3]: neighbours
+; [bp - 4]: i
+; [bp - 5]: j
 
+mov ax, cx                  ; ax = idx
+mov bl, COLS                ; bl = COLS
+div bl                      ; al = idx / COLS ; ah = idx % COLS
+
+mov [bp - 1], al            ; row = idx / COLS
+mov [bp - 2], ah            ; row = idx % COLS
+mov byte [bp - 6], 0        ; neighbours = 0
+
+mov byte [bp - 8], -1       ; i = -1
+.i:                         ; do {
+
+    mov byte [bp - 10], -1          ; j = -1
+.j:                                 ; do {
+
+        ; if ((row || col) && get_state (grid, row + i, col + i) == ALIVE)        
+        ;   neighbours++
+
+        inc byte [bp - 10]
+        cmp byte [bp - 10], 1
+        jle .j                      ; } while (++j <= 1)
+
+    inc byte [bp - 8]
+    cmp byte [bp - 8], 1
+    jle .i                  ; } while (++i <= 1)
+
+leave
 ret
 
 ; write_next_cell_state() -----------------------------------------------------
@@ -221,7 +252,7 @@ shl bx, 1
 mov dx, [es:si + bx]        ; dl = cell current state
 
 test dl, ALIVE              ; if (ALIVE) {
-jne 1f
+jne .else
 
 test ax, 2                  ;     if (n < 2)
 jl .dead                    ;         return DEAD
@@ -231,7 +262,7 @@ jg .dead                    ;         return DEAD
 
 jmp .alive                  ;     return ALIVE
 
-1:                          ; }
+.else:                      ; }
 
 test ax, 3                  ; if (n != 3)
 jne .dead                   ;     return DEAD
