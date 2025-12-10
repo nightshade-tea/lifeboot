@@ -33,10 +33,10 @@ org 0x7c00
 
 ; initialize segment registers
 mov ax, VGA >> 4
-mov ds, ax
 mov es, ax
 
 xor ax, ax
+mov ds, ax
 mov ss, ax
 
 ; set stack pointers
@@ -59,15 +59,22 @@ mov [xss], dx               ; cx:dx = number of clock ticks since midnight
 ; initialize currvgapg
 mov word [currvgapg], VGAPGSZ
 
-; setup -----------------------------------------------------------------------
+; start simulation from random state ------------------------------------------
 
-setup:
+start:
 
 call init_grid
-call flip_vga_page
-call delay
 
-jmp setup
+; apply game of life's rules to determine the next state ----------------------
+
+next_state:
+
+call flip_vga_page          ; display current state
+call delay                  ; sleep a little
+
+call write_next_vga_page    ; write the next state to the hidden page
+
+jmp next_state
 
 ; =============================================================================
 
@@ -172,6 +179,94 @@ setnz al                        ; al = !(currvgapg == 0)
 
 mov ah, 0x05                ; select active display page
 int 0x10                    ; video services
+
+ret
+
+; alive_neighbours() ----------------------------------------------------------
+
+; input:
+; es:si     -> current grid
+; cx        -> cell index
+
+; output:
+; ax = # alive neighbours
+
+; clobbers ?
+
+alive_neighbours:
+
+; todo
+
+ret
+
+; write_next_cell_state() -----------------------------------------------------
+
+; input:
+; es:si     -> current grid
+; es:di     -> next grid
+; cx        -> cell index
+
+; output:
+; [es:di + cx * 2] = updated cell state
+
+; clobbers ?
+
+write_next_cell_state:
+
+call alive_neighbours       ; ax = # alive neighbours
+
+mov bx, cx
+shl bx, 1
+
+mov dx, [es:si + bx]        ; dl = cell current state
+
+test dl, ALIVE              ; if (ALIVE) {
+jne 1f
+
+test ax, 2                  ;     if (n < 2)
+jl .dead                    ;         return DEAD
+
+test ax, 3                  ;     if (n > 3)
+jg .dead                    ;         return DEAD
+
+jmp .alive                  ;     return ALIVE
+
+1:                          ; }
+
+test ax, 3                  ; if (n != 3)
+jne .dead                   ;     return DEAD
+
+.alive:                     ; return ALIVE
+mov dl, ALIVE
+jmp .write
+
+.dead:
+mov dl, DEAD
+
+.write:
+mov [es:di + bx], dx
+
+ret
+
+; write_next_vga_page() -------------------------------------------------------
+
+; clobbers di, si, cx
+
+write_next_vga_page:
+
+mov si, [currvgapg]         ; es:si -> current page
+
+mov di, VGAPGSZ
+xor di, si                  ; es:di -> next page
+
+xor cx, cx                  ; i = 0
+
+.update_loop:
+call write_next_cell_state
+
+inc cx
+test cx, COLS * ROWS
+jl .update_loop             ; for i in [0 .. COLS * ROWS - 1]
 
 ret
 
