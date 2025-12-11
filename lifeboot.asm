@@ -14,7 +14,7 @@ org 0x7c00
 
 %define COLS 80
 %define ROWS 25
-%define VGAPGSZ (COLS * ROWS * 2)
+%define VGAPGSZ (COLS * ROWS * 2 + 96)  ; why 96 ??????
 
 ; memory layout ---------------------------------------------------------------
 
@@ -57,7 +57,7 @@ int 0x1a                    ;  system time
 mov [xss], dx               ; cx:dx = number of clock ticks since midnight
 
 ; initialize currvgapg
-mov word [currvgapg], VGAPGSZ
+mov word [currvgapg], 0
 
 ; start simulation from random state ------------------------------------------
 
@@ -69,10 +69,9 @@ call init_grid
 
 next_state:
 
-call flip_vga_page          ; display current state
-call delay                  ; sleep a little
-
-call write_next_vga_page    ; write the next state to the hidden page
+call write_next_vga_page
+call wait_keypress
+call flip_vga_page
 
 jmp next_state
 
@@ -91,6 +90,17 @@ mov dx, 0
 
 mov ah, 0x86
 int 0x15                    ; wait
+
+ret
+
+; wait_keypress() - wait for any keypress -------------------------------------
+
+; clobbers: ax
+
+wait_keypress:
+
+mov ah, 0x00        ; read key press
+int 0x16            ; keyboard services
 
 ret
 
@@ -177,6 +187,18 @@ call vsync_wait
 xor word [currvgapg], VGAPGSZ   ; flip currvgapg
 setnz al                        ; al = !(currvgapg == 0)
 
+mov di, [currvgapg]             ; es:di -> current page
+mov dh, PRINT_COLOR
+
+mov dl, 'P'
+mov [es:di], dx
+
+mov dl, al
+add dl, 48
+add di, 2
+
+mov [es:di], dx
+
 mov ah, 0x05                ; select active display page
 int 0x10                    ; video services
 
@@ -248,7 +270,7 @@ mov byte [bp - 4], -1       ; i = -1
 
         mov dx, [es:si + bx]            ; dl = cell state
 
-        test dl, ALIVE                  ; if (!ALIVE) continue
+        cmp dl, ALIVE                   ; if (!ALIVE) continue
         jne .continue
 
         inc byte [bp - 3]               ; neighbours++
@@ -288,20 +310,20 @@ shl bx, 1
 
 mov dx, [es:si + bx]        ; dl = cell current state
 
-test dl, ALIVE              ; if (ALIVE) {
+cmp dl, ALIVE               ; if (ALIVE) {
 jne .else
 
-test ax, 2                  ;     if (n < 2)
+cmp ax, 2                   ;     if (n < 2)
 jl .dead                    ;         return DEAD
 
-test ax, 3                  ;     if (n > 3)
+cmp ax, 3                   ;     if (n > 3)
 jg .dead                    ;         return DEAD
 
 jmp .alive                  ;     return ALIVE
 
 .else:                      ; }
 
-test ax, 3                  ; if (n != 3)
+cmp ax, 3                   ; if (n != 3)
 jne .dead                   ;     return DEAD
 
 .alive:                     ; return ALIVE
@@ -333,7 +355,7 @@ xor cx, cx                  ; i = 0
 call write_next_cell_state
 
 inc cx
-test cx, COLS * ROWS
+cmp cx, COLS * ROWS
 jl .update_loop             ; for i in [0 .. COLS * ROWS - 1]
 
 ret
