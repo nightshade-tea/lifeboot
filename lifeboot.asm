@@ -191,7 +191,7 @@ ret
 ; output:
 ; ax = # alive neighbours
 
-; clobbers ?
+; clobbers ax, bx, dx
 
 alive_neighbours:
 enter 5, 0
@@ -208,24 +208,61 @@ div bl                      ; al = idx / COLS ; ah = idx % COLS
 
 mov [bp - 1], al            ; row = idx / COLS
 mov [bp - 2], ah            ; row = idx % COLS
-mov byte [bp - 6], 0        ; neighbours = 0
+mov byte [bp - 3], 0        ; neighbours = 0
 
-mov byte [bp - 8], -1       ; i = -1
+mov byte [bp - 4], -1       ; i = -1
 .i:                         ; do {
 
-    mov byte [bp - 10], -1          ; j = -1
+    mov byte [bp - 5], -1           ; j = -1
 .j:                                 ; do {
 
-        ; if ((row || col) && get_state (grid, row + i, col + i) == ALIVE)        
-        ;   neighbours++
+        mov al, [bp - 4]
+        or al, [bp - 5]
+        jz .continue                    ; if (!i && !j) continue
 
-        inc byte [bp - 10]
-        cmp byte [bp - 10], 1
+        mov al, [bp - 1]
+        add al, [bp - 4]                ; al = row + i
+
+        cmp al, 0
+        jl .continue                    ; if (row + i < 0) continue
+
+        cmp al, ROWS
+        jge .continue                   ; if (row + i >= ROWS) continue
+
+        mov ah, [bp - 2]
+        add ah, [bp - 5]                ; ah = col + j
+
+        cmp ah, 0
+        jl .continue                    ; if (col + j < 0) continue
+
+        cmp ah, COLS
+        jge .continue                   ; if (col + j >= COLS) continue
+
+        movzx bx, ah                    ; bx = col + j
+
+        mov ah, COLS
+        mul ah                          ; ax = (row + i) * COLS
+
+        add bx, ax                      ; bx = cell index
+        shl bx, 1                       ; bx = grid offset
+
+        mov dx, [es:si + bx]            ; dl = cell state
+
+        test dl, ALIVE                  ; if (!ALIVE) continue
+        jne .continue
+
+        inc byte [bp - 3]               ; neighbours++
+
+.continue:
+        inc byte [bp - 5]
+        cmp byte [bp - 5], 1
         jle .j                      ; } while (++j <= 1)
 
-    inc byte [bp - 8]
-    cmp byte [bp - 8], 1
+    inc byte [bp - 4]
+    cmp byte [bp - 4], 1
     jle .i                  ; } while (++i <= 1)
+
+movzx ax, byte [bp - 3]     ; ax = # alive neighbours
 
 leave
 ret
@@ -240,7 +277,7 @@ ret
 ; output:
 ; [es:di + cx * 2] = updated cell state
 
-; clobbers ?
+; clobbers ax, bx, dx
 
 write_next_cell_state:
 
@@ -281,7 +318,7 @@ ret
 
 ; write_next_vga_page() -------------------------------------------------------
 
-; clobbers di, si, cx
+; clobbers di, si, ax, bx, cx, dx
 
 write_next_vga_page:
 
