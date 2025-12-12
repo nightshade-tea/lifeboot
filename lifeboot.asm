@@ -52,8 +52,15 @@ mov ah, 0x01                ; set text-mode cursor shape
 int 0x10                    ; video services
 
 ; initialize xss
+
+set_xss_seed:
+
 mov ah, 0x00                ; get
 int 0x1a                    ;  system time
+
+cmp dx, 0
+je set_xss_seed             ; if seed is 0, xs wont work properly
+
 mov [xss], dx               ; cx:dx = number of clock ticks since midnight
 
 ; initialize currvgapg
