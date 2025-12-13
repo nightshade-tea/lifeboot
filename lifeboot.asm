@@ -8,9 +8,7 @@ org 7c00h
 %define DEAD ' '            ; char to represent a dead cell
 %define ALIVE '.'           ; char to represent an alive cell
 %define PRINT_COLOR 07h     ; grey on black
-
-%define WAIT_DELAY_CX 01h   ; cx:dx = delay in microseconds
-%define WAIT_DELAY_DX 00h
+%define ITER_LIM 500        ; reset the simulation after ITER_LIM iterations
 
 ; constants -------------------------------------------------------------------
 
@@ -28,6 +26,7 @@ org 7c00h
 
 %define xss DAT             ; xs() state (word)
 %define currvgapg DAT + 2   ; current vga page near pointer (word)
+%define iter DAT + 4        ; current iteration # (word)
 
 ; =============================================================================
 
@@ -73,6 +72,7 @@ mov word [currvgapg], 0
 start:
 
 call init_grid
+mov word [iter], 1
 
 ; apply game of life's rules to determine the next state ----------------------
 
@@ -80,28 +80,19 @@ next_state:
 
 call vsync_wait
 call write_next_vga_page
-call delay
+
+call vsync_wait
 call flip_vga_page
 
-jmp next_state
+inc word [iter]
+cmp word [iter], ITER_LIM
+jle next_state
+
+jmp start                   ; reset
 
 ; =============================================================================
 
 ; functions -------------------------------------------------------------------
-
-; delay() - suspend program execution temporarily -----------------------------
-
-; clobbers ah, cx, dx
-
-delay:
-
-mov cx, WAIT_DELAY_CX
-mov dx, WAIT_DELAY_DX
-
-mov ah, 86h
-int 15h                     ; wait
-
-ret
 
 ; vsync_wait() - wait for display to enter the next VBlank cycle --------------
 
@@ -180,8 +171,6 @@ ret
 ; clobbers ax, dx
 
 flip_vga_page:
-
-call vsync_wait
 
 xor word [currvgapg], VGAPGSZ   ; flip currvgapg
 setnz al                        ; al = !(currvgapg == 0)
