@@ -76,6 +76,7 @@ call init_grid
 
 next_state:
 
+call vsync_wait
 call write_next_vga_page
 call wait_keypress
 call flip_vga_page
