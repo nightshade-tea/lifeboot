@@ -1,5 +1,5 @@
 bits 16
-org 0x7c00
+org 7c00h
 
 ; =============================================================================
 
@@ -7,8 +7,8 @@ org 0x7c00
 
 %define DEAD ' '            ; char to represent a dead cell
 %define ALIVE '#'           ; char to represent an alive cell
-%define PRINT_COLOR 0x07    ; grey on black
-%define WAIT_DELAY 0x02     ; 0.131072 seconds
+%define PRINT_COLOR 07h     ; grey on black
+%define WAIT_DELAY 02h      ; 0.131072 seconds
 
 ; constants -------------------------------------------------------------------
 
@@ -18,8 +18,8 @@ org 0x7c00
 
 ; memory layout ---------------------------------------------------------------
 
-%define ORG 0x7c00
-%define VGA 0xb8000
+%define ORG 7c00h
+%define VGA 0b8000h
 %define DAT ORG + 512
 
 ; static variables ------------------------------------------------------------
@@ -47,16 +47,16 @@ mov sp, bp
 cld
 
 ; disable cursor
-mov ch, 0x3f                ; cursor start and options
-mov ah, 0x01                ; set text-mode cursor shape
-int 0x10                    ; video services
+mov ch, 3fh                 ; cursor start and options
+mov ah, 01h                 ; set text-mode cursor shape
+int 10h                     ; video services
 
 ; initialize xss
 
 set_xss_seed:
 
-mov ah, 0x00                ; get
-int 0x1a                    ;  system time
+mov ah, 00h                 ; get
+int 1ah                     ;  system time
 
 cmp dx, 0
 je set_xss_seed             ; if seed is 0, xs wont work properly
@@ -96,8 +96,8 @@ delay:
 mov cx, WAIT_DELAY          ; cx:dx = interval in microseconds
 mov dx, 0
 
-mov ah, 0x86
-int 0x15                    ; wait
+mov ah, 86h
+int 15h                     ; wait
 
 ret
 
@@ -107,8 +107,8 @@ ret
 
 wait_keypress:
 
-mov ah, 0x00        ; read key press
-int 0x16            ; keyboard services
+mov ah, 00h         ; read key press
+int 16h             ; keyboard services
 
 ret
 
@@ -118,16 +118,16 @@ ret
 
 vsync_wait:
 
-mov dx, 0x3da               ; input status #1 register
+mov dx, 3dah                ; input status #1 register
 
 .wait_on:
     in al, dx
-    test al, 0x08           ; vertical retrace bit
+    test al, 08h            ; vertical retrace bit
     jnz .wait_on
 
 .wait_off:
     in al, dx
-    test al, 0x08
+    test al, 08h
     jz .wait_off
 
 ret
@@ -195,8 +195,8 @@ call vsync_wait
 xor word [currvgapg], VGAPGSZ   ; flip currvgapg
 setnz al                        ; al = !(currvgapg == 0)
 
-mov ah, 0x05                ; select active display page
-int 0x10                    ; video services
+mov ah, 05h                 ; select active display page
+int 10h                     ; video services
 
 ret
 
@@ -367,4 +367,4 @@ jmp halt
 ; =============================================================================
 
 times 510 - ($ - $$) db 0   ; fill remaining bytes with zeroes
-dw 0xaa55                   ; mbr magic byte
+dw 0aa55h                   ; mbr magic byte
