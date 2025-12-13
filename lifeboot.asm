@@ -6,15 +6,17 @@ org 7c00h
 ; settings --------------------------------------------------------------------
 
 %define DEAD ' '            ; char to represent a dead cell
-%define ALIVE '#'           ; char to represent an alive cell
+%define ALIVE '.'           ; char to represent an alive cell
 %define PRINT_COLOR 07h     ; grey on black
-%define WAIT_DELAY 02h      ; 0.131072 seconds
+
+%define WAIT_DELAY_CX 01h   ; cx:dx = delay in microseconds
+%define WAIT_DELAY_DX 00h
 
 ; constants -------------------------------------------------------------------
 
 %define COLS 80
 %define ROWS 25
-%define VGAPGSZ (COLS * ROWS * 2 + 96)  ; why 96 ??????
+%define VGAPGSZ 1000h
 
 ; memory layout ---------------------------------------------------------------
 
@@ -78,7 +80,7 @@ next_state:
 
 call vsync_wait
 call write_next_vga_page
-call wait_keypress
+call delay
 call flip_vga_page
 
 jmp next_state
@@ -93,22 +95,11 @@ jmp next_state
 
 delay:
 
-mov cx, WAIT_DELAY          ; cx:dx = interval in microseconds
-mov dx, 0
+mov cx, WAIT_DELAY_CX
+mov dx, WAIT_DELAY_DX
 
 mov ah, 86h
 int 15h                     ; wait
-
-ret
-
-; wait_keypress() - wait for any keypress -------------------------------------
-
-; clobbers: ax
-
-wait_keypress:
-
-mov ah, 00h         ; read key press
-int 16h             ; keyboard services
 
 ret
 
