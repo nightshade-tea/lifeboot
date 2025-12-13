@@ -194,18 +194,6 @@ call vsync_wait
 xor word [currvgapg], VGAPGSZ   ; flip currvgapg
 setnz al                        ; al = !(currvgapg == 0)
 
-mov di, [currvgapg]             ; es:di -> current page
-mov dh, PRINT_COLOR
-
-mov dl, 'P'
-mov [es:di], dx
-
-mov dl, al
-add dl, 48
-add di, 2
-
-mov [es:di], dx
-
 mov ah, 0x05                ; select active display page
 int 0x10                    ; video services
 
