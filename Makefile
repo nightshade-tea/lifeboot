@@ -1,20 +1,14 @@
-SRC_DIR := .
-PROGRAMS := prototype lifeboot
-CC := gcc
-CFLAGS := -Wall -Wextra -I.
+SRC := lifeboot.asm
+BIN := boot.bin
+QEMU := qemu-system-i386
 
-lifeboot: lifeboot.asm
-	nasm lifeboot.asm
+$(BIN): $(SRC)
+	nasm $(SRC) -f bin -o $(BIN)
 
-all: $(PROGRAMS)
-
-run: lifeboot
-	qemu-system-x86_64 -drive file=lifeboot,format=raw
-
-format:
-	find $(SRC_DIR) -iname '*.[hc]' | xargs clang-format -i --style=GNU
+run: $(BIN)
+	$(QEMU) -drive file=$(BIN),format=raw
 
 clean:
-	rm -rf $(PROGRAMS) *.o
+	rm -f $(BIN)
 
-.PHONY: all run format clean
+.PHONY: run clean
