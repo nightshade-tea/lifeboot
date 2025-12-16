@@ -292,8 +292,8 @@ cmp dl, ALIVE               ; if (ALIVE) {
 jne .else
 
 shr ax, 1
-xor ax, 1                   ;     if (n != 2 || n != 3)
-jnz .dead                   ;         return DEAD (likely)
+cmp ax, 1                   ;     if (n != 2 || n != 3)
+jne .dead                   ;         return DEAD (likely)
 
 jmp .alive                  ;     return ALIVE
 
