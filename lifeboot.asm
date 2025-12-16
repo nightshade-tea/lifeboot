@@ -291,11 +291,9 @@ mov dx, [es:si + bx]        ; dl = cell current state
 cmp dl, ALIVE               ; if (ALIVE) {
 jne .else
 
-cmp ax, 2                   ;     if (n < 2)
-jl .dead                    ;         return DEAD
-
-cmp ax, 3                   ;     if (n > 3)
-jg .dead                    ;         return DEAD
+shr ax, 1
+xor ax, 1                   ;     if (n != 2 || n != 3)
+jnz .dead                   ;         return DEAD (likely)
 
 jmp .alive                  ;     return ALIVE
 
