@@ -151,7 +151,7 @@ mov cx, COLS * ROWS         ; for each cell
 
 .write_cell:                ; do {
     call xs                 ;     bx = random value
-    mov al, DEAD            ;     al = DEAD (likely)
+    mov al, DEAD            ;     al = DEAD
 
     test bx, 0b11
 
@@ -223,20 +223,14 @@ mov byte [bp - 4], -1       ; i = -1
         mov al, [bp - 1]
         add al, [bp - 4]                ; al = row + i
 
-        cmp al, 0                       ; if (row + i < 0)
-        jl .continue                    ;     continue
-
-        cmp al, ROWS                    ; if (row + i >= ROWS)
-        jge .continue                   ;     continue
+        cmp al, ROWS                    ; if ((unsigned)(row + i) >= ROWS)
+        jae .continue                   ;     continue
 
         mov ah, [bp - 2]
         add ah, [bp - 5]                ; ah = col + j
 
-        cmp ah, 0                       ; if (col + j < 0)
-        jl .continue                    ;     continue
-
-        cmp ah, COLS                    ; if (col + j >= COLS)
-        jge .continue                   ;     continue
+        cmp ah, COLS                    ; if ((unsigned)(col + j) >= COLS)
+        jae .continue                   ;     continue
 
         movzx bx, ah                    ; bx = col + j
 
@@ -293,7 +287,7 @@ jne .else
 
 shr ax, 1
 cmp ax, 1                   ;     if (n != 2 || n != 3)
-jne .dead                   ;         return DEAD (likely)
+jne .dead                   ;         return DEAD
 
 jmp .alive                  ;     return ALIVE
 
